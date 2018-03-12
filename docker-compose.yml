@@ -26,7 +26,7 @@ services:
         constraints: [node.role == manager]
 
   helloworld:
-    image: dlish27/helloworld:0.0.10
+    image: dlish27/helloworld:0.0.12
     networks: 
       - site
     deploy:
