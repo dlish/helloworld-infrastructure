@@ -22,16 +22,19 @@ node {
 
         // setup
         def targetEnv = ''
-        def tfState = "git-${gitCommit()}.tfstate"
+        def tfState = ''
+        def tfplan = ''
         if (isPR()) {
             targetEnv = 'staging'
+            tfState = "git-${gitCommit()}.tfstate"
         } else if (isMaster()) {
             targetEnv = 'prod'
             tfState = 'prod.tfstate'
         } else {
             targetEnv = 'qa'
+            tfState = 'qa.tfstate'
         }
-        def tfplan = "${targetEnv}-${tag}.tfplan"
+        tfplan = "${targetEnv}-${tag}.tfplan"
         sh "cat $PEM > $TERRAFORM_DIR/pem.txt"
 
         // build ami 

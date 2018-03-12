@@ -165,12 +165,6 @@ resource "null_resource" "deploy_docker_stack" {
     host        = "${aws_instance.docker_swarm_manager_init.public_ip}"
   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "mkdir -p resources/nginx",
-    ]
-  }
-
   provisioner "file" {
     source      = "${var.docker_compose_file}"
     destination = "docker-compose.yml"
