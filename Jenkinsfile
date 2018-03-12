@@ -95,7 +95,7 @@ node {
                 notifyTeardownEvent(masterAddress)
             }
 
-        } else {
+        } else if (isMaster()) {
             def tfplan = "prod-${version}.tfplan"
 
             try {
@@ -123,6 +123,8 @@ node {
                 error "Failed: ${e}"
                 notifySlack("FAILED")
             } 
+        } else {
+            // deploy qa
         }
     }
 }
