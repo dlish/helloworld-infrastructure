@@ -16,7 +16,7 @@ node {
     def tag = "git-${gitCommit()}"
     stage('build AMIs') {
         if (rebuildAmi) {
-            sh """$packer build \
+            sh """${packer()} build \
                 -var aws_region=${awsRegion} \
                 -var ami_name=docker-swarm \
                 -var git_commit=${gitCommit()} \
