@@ -40,7 +40,7 @@ services:
         window: 120s
 
   helloworld-app:
-    image: dlish27/helloworld-app:0.0.6
+    image: dlish27/helloworld-app:0.0.7
     networks: 
       - app
     deploy:
