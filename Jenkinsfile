@@ -8,7 +8,7 @@ PACKER_DIR    = 'deploy/docker-swarm/packer'
 TERRAFORM_DIR = 'deploy/docker-swarm/terraform/aws'
 NOTIFICATIONS = true
 
-node('docker') {
+node {
     def tag = "git-${gitCommit()}"
 
     stage('checkout') {
