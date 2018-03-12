@@ -133,7 +133,7 @@ resource "aws_instance" "docker_swarm_workers" {
       "sudo service docker start",
       "chmod +x /tmp/join_worker.sh",
       "/tmp/join_worker.sh",
-       "scope launch ${aws_instance.docker_swarm_manager_init.public_ip}",
+      "scope launch ${aws_instance.docker_swarm_manager_init.public_ip}",
     ]
   }
 }

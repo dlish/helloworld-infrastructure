@@ -61,7 +61,7 @@ node {
             """
         }
 
-        if (isMaster()) {
+        if (!isPR() {
             stage('taint resources') {
                 taintResources()
             }
