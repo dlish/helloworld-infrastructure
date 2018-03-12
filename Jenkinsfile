@@ -156,7 +156,7 @@ def notifyGithub(String comment) {
             string(credentialsId: 'b4043775-af57-4862-8213-3759bba3e2f3', variable: 'TOKEN')
         ]) {
             def pr  = env.BRANCH_NAME.split("-")[1].trim()
-            sh "curl -H \"Content-Type: application/json\" -u dlish:$TOKEN -X POST -d '{\"body\": \"$comment\"}' https://api.github.com/repos/dlish27/helloworld-infrastructure/issues/$pr/comments"
+            sh "curl -H \"Content-Type: application/json\" -u dlish:$TOKEN -X POST -d '{\"body\": \"$comment\"}' https://api.github.com/repos/dlish/helloworld-infrastructure/issues/$pr/comments"
         }
     }
 }
