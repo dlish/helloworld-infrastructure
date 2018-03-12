@@ -1,8 +1,8 @@
 #!groovy
 
-def version        = "0.0.${env.BUILD_NUMBER}"
-def awsRegion      = "us-west-1"
-def rebuildAmi     = false
+version        = "0.0.${env.BUILD_NUMBER}"
+awsRegion      = "us-west-1"
+rebuildAmi     = false
 
 PACKER_DIR    = 'deploy/docker-swarm/packer'
 TERRAFORM_DIR = 'deploy/docker-swarm/terraform/aws'
@@ -14,54 +14,76 @@ node {
     }
 
     def tag = "git-${gitCommit()}"
-    stage('build AMIs') {
-        if (rebuildAmi) {
-            sh """${packer()} build \
-                -var aws_region=${awsRegion} \
-                -var ami_name=docker-swarm \
-                -var git_commit=${gitCommit()} \
-                -var git_branch=${env.BRANCH_NAME} \
-                -var version=${version} \
-                -force \
-                packer.json
-            """
-            sleep 60 // bug where ami id is not updated in AWS by the time terraform runs
-        } else {
-            echo "Skipping build"
-        }
-    }
 
-    // Master builds deploy to prod
-    // Branch builds deploy to QA
-    // PRs deploy to staging
     withCredentials([
         usernamePassword(credentialsId: 'docker-hub-id', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME'),
         file(credentialsId: 'pem', variable: 'PEM')
     ]) {
 
+        // setup
+        def targetEnv = ''
+        def tfState = "git-${gitCommit()}.tfstate"
+        if (isPR()) {
+            targetEnv = 'staging'
+        } else if (isMaster()) {
+            targetEnv = 'prod'
+            tfState = 'prod.tfstate'
+        } else {
+            targetEnv = 'qa'
+        }
+        def tfplan = "${targetEnv}-${tag}.tfplan"
         sh "cat $PEM > $TERRAFORM_DIR/pem.txt"
 
-        if (isPR()) {
-            def tfplan = "staging-${version}.tfplan"
-
-            stage('plan') {
-                sh """${terraform()} init \
-                    -backend-config=config/staging-state-store.tfvars \
-                    -backend-config='key=tf/staging/git-${gitCommit()}.tfstate' \
-                    .
-                """
-                sh """${terraform()} plan \
-                    -var-file=config/staging.tfvars \
-                    -var tag=$tag \
-                    -var private_key_path=pem.txt \
+        // build ami 
+        stage('build AMIs') {
+            if (rebuildAmi) {
+                sh """${packer()} build \
+                    -var aws_region=${awsRegion} \
+                    -var ami_name=docker-swarm \
                     -var git_commit=${gitCommit()} \
                     -var git_branch=${env.BRANCH_NAME} \
                     -var version=${version} \
-                    -out $tfplan \
-                    .
+                    -force \
+                    packer.json
                 """
+                sleep 60 // bug where ami id is not updated in AWS by the time terraform runs
+            } else {
+                echo "Skipping build"
             }
-            
+        }
+
+        stage('init') {
+            sh """${terraform()} init \
+                -backend-config=config/${targetEnv}.tfvars \
+                -backend-config='key=tf/${targetEnv}/${tfState}' \
+                -force-copy \
+                .
+            """
+        }
+
+        if (isMaster()) {
+            stage('taint resources') {
+                taintResources()
+            }
+        }
+
+        stage('plan') {
+            sh """${terraform()} plan \
+                -var-file=config/${targetEnv}.tfvars \
+                -var tag=$tag \
+                -var private_key_path=pem.txt \
+                -var git_commit=${gitCommit()} \
+                -var git_branch=${env.BRANCH_NAME} \
+                -var manager_volume_size=50 \
+                -var worker_volume_size=25 \
+                -var version=${version} \
+                -out $tfplan \
+                .
+            """
+        }
+
+        // Deploy to staging environment 
+        if (isPR()) {
             def masterAddress = ''
             try {
                 stage('deploy staging') {
@@ -95,36 +117,20 @@ node {
                 notifyTeardownEvent(masterAddress)
             }
 
-        } else if (isMaster()) {
-            def tfplan = "prod-${version}.tfplan"
-
-            try {
-                stage('plan') {
-                    sh "${terraform()} init -backend-config=config/prod-state-store.tfvars -force-copy ."
-                    taintResources()
-                    sh """${terraform()} plan \
-                        -var-file=config/prod.tfvars \
-                        -var tag=latest \
-                        -var private_key_path=pem.txt \
-                        -var manager_volume_size=50 \
-                        -var worker_volume_size=25 \
-                        -var git_commit=${gitCommit()} \
-                        -var git_branch=${env.BRANCH_NAME} \
-                        -var version=${version} \
-                        -out $tfplan \
-                        .
-                    """
-                }
-
-                stage('deploy to prod') {
-                    sh "${terraform(false)} apply $tfplan"
-                }
-            } catch(e) {
-                error "Failed: ${e}"
-                notifySlack("FAILED")
-            } 
-        } else {
-            // deploy qa
+        } 
+        
+        // Deploy to production
+        else if (isMaster()) {
+            stage('deploy to prod') {
+                sh "${terraform(false)} apply $tfplan"
+            }
+        } 
+        
+        // Deploy to QA
+        else {
+            stage('deploy to QA') {
+                sh "${terraform(false)} apply $tfplan"
+            }
         }
     }
 }

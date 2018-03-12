@@ -23,7 +23,7 @@ variable "availability_zones" {
 
 variable "private_key_name" {
   description = "Name of private_key"
-  default     = "pqvp-kmt"
+  default     = "dlish27"
 }
 
 variable "private_key_path" {
@@ -61,11 +61,6 @@ variable "tag" {
   default     = "latest"
 }
 
-variable "docker_compose_file" {
-  description = "Full path to main docker-stack.yml file"
-  default     = "../../../../docker-compose.yml"
-}
-
 variable "admin_user" {
   description = "Admin credentials for weave scope"
   default     = "admin"
@@ -89,4 +84,9 @@ variable "worker_volume_size" {
 variable "nginx_conf" {
   description = "Nginx conf"
   default     = "../../../../nginx.conf"
+}
+
+variable "docker_compose_file" {
+  description = "Full path to main docker-stack.yml file"
+  default     = "../../../../docker-compose.yml"
 }
