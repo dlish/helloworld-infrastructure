@@ -118,7 +118,6 @@ node {
 
                 stage('deploy to prod') {
                     sh "${terraform(false)} apply $tfplan"
-                    publishProdInfo(getMasterAddress())
                 }
             } catch(e) {
                 error "Failed: ${e}"
