@@ -40,24 +40,75 @@ node('docker') {
         file(credentialsId: 'pem', variable: 'PEM')
     ]) {
 
-        sh "cp docker-stack.yml $TERRAFORM_DIR"
-        sh "cp resources/nginx/nginx.conf $TERRAFORM_DIR"
         sh "cat $PEM > $TERRAFORM_DIR/pem.txt"
 
-        if (isMaster() || isPR()) {
-            if (isPR()) {
-                def tfplan = "staging-${version}.tfplan"
+        if (isPR()) {
+            def tfplan = "staging-${version}.tfplan"
 
+            stage('plan') {
+                sh """${terraform()} init \
+                    -backend-config=config/staging-state-store.tfvars \
+                    -backend-config='key=tf/staging/git-${gitCommit()}.tfstate' \
+                    .
+                """
+                sh """${terraform()} plan \
+                    -var-file=config/staging.tfvars \
+                    -var tag=$tag \
+                    -var private_key_path=pem.txt \
+                    -var git_commit=${gitCommit()} \
+                    -var git_branch=${env.BRANCH_NAME} \
+                    -var version=${version} \
+                    -out $tfplan \
+                    .
+                """
+            }
+            
+            def masterAddress = ''
+            try {
+                stage('deploy staging') {
+                    sh "${terraform(false)} apply $tfplan"
+                    masterAddress = getMasterAddress()
+                    publishStagedInfo(masterAddress) 
+                }
+
+                stage('UAT') {
+                    milestone 1
+
+                    def userInput = ''
+                    timeout(time: 2, unit: 'DAYS') {
+                        userInput = input(
+                            id: 'userInput',
+                            message: "Did staged build 'pass' or 'fail'?",
+                            parameters: [choice(name: 'result', choices: 'pass\nfail', description: '')]
+                        )
+                    }
+
+                    if (userInput != "pass") {
+                        error("Staged build failed user acceptance testing")
+                    }
+
+                    milestone 2
+                }
+            } catch(e) {
+                error "Failed: ${e}"
+            } finally {
+                sh "${terraform()} destroy -force -var private_key_path=pem.txt ."
+                notifyTeardownEvent(masterAddress)
+            }
+
+        } else {
+            def tfplan = "prod-${version}.tfplan"
+
+            try {
                 stage('plan') {
-                    sh """${terraform()} init \
-                        -backend-config=config/staging-state-store.tfvars \
-                        -backend-config='key=tf/staging/git-${gitCommit()}.tfstate' \
-                        .
-                    """
+                    sh "${terraform()} init -backend-config=config/prod-state-store.tfvars -force-copy ."
+                    taintResources()
                     sh """${terraform()} plan \
-                        -var-file=config/staging.tfvars \
-                        -var tag=$tag \
+                        -var-file=config/prod.tfvars \
+                        -var tag=latest \
                         -var private_key_path=pem.txt \
+                        -var manager_volume_size=50 \
+                        -var worker_volume_size=25 \
                         -var git_commit=${gitCommit()} \
                         -var git_branch=${env.BRANCH_NAME} \
                         -var version=${version} \
@@ -65,70 +116,15 @@ node('docker') {
                         .
                     """
                 }
-                
-                def masterAddress = ''
-                try {
-                    stage('deploy staging') {
-                        sh "${terraform(false)} apply $tfplan"
-                        masterAddress = getMasterAddress()
-                        publishStagedInfo(masterAddress) 
-                    }
 
-                    stage('UAT') {
-                        milestone 1
-
-                        def userInput = ''
-                        timeout(time: 2, unit: 'DAYS') {
-                            userInput = input(
-                                id: 'userInput',
-                                message: "Did staged build 'pass' or 'fail'?",
-                                parameters: [choice(name: 'result', choices: 'pass\nfail', description: '')]
-                            )
-                        }
-
-                        if (userInput != "pass") {
-                            error("Staged build failed user acceptance testing")
-                        }
-
-                        milestone 2
-                    }
-                } catch(e) {
-                    error "Failed: ${e}"
-                } finally {
-                    sh "${terraform()} destroy -force -var private_key_path=pem.txt ."
-                    notifyTeardownEvent(masterAddress)
+                stage('deploy to prod') {
+                    sh "${terraform(false)} apply $tfplan"
+                    publishProdInfo(getMasterAddress())
                 }
-
-            } else {
-                def tfplan = "prod-${version}.tfplan"
-
-                try {
-                    stage('plan') {
-                        sh "${terraform()} init -backend-config=config/prod-state-store.tfvars -force-copy ."
-                        taintResources()
-                        sh """${terraform()} plan \
-                            -var-file=config/prod.tfvars \
-                            -var tag=latest \
-                            -var private_key_path=pem.txt \
-                            -var manager_volume_size=50 \
-                            -var worker_volume_size=25 \
-                            -var git_commit=${gitCommit()} \
-                            -var git_branch=${env.BRANCH_NAME} \
-                            -var version=${version} \
-                            -out $tfplan \
-                            .
-                        """
-                    }
-
-                    stage('deploy to prod') {
-                        sh "${terraform(false)} apply $tfplan"
-                        publishProdInfo(getMasterAddress())
-                    }
-                } catch(e) {
-                    error "Failed: ${e}"
-                    notifySlack("FAILED")
-                } 
-            }
+            } catch(e) {
+                error "Failed: ${e}"
+                notifySlack("FAILED")
+            } 
         }
     }
 }
