@@ -26,7 +26,7 @@ services:
         constraints: [node.role == manager]
 
   helloworld:
-    image: dlish27/helloworld:0.0.12
+    image: dlish27/helloworld:0.0.15
     networks: 
       - site
     deploy:
@@ -40,7 +40,7 @@ services:
         window: 120s
 
   helloworld-app:
-    image: dlish27/helloworld-app:0.0.6
+    image: dlish27/helloworld-app:0.0.7
     networks: 
       - app
     deploy:
