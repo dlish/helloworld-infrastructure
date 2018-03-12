@@ -2,7 +2,7 @@
 
 def version        = "0.0.${env.BUILD_NUMBER}"
 def awsRegion      = "us-west-1"
-def rebuildAmi     = true
+def rebuildAmi     = false
 
 PACKER_DIR    = 'deploy/docker-swarm/packer'
 TERRAFORM_DIR = 'deploy/docker-swarm/terraform/aws'
