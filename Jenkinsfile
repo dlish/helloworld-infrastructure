@@ -54,7 +54,7 @@ node {
 
         stage('init') {
             sh """${terraform()} init \
-                -backend-config=config/${targetEnv}.tfvars \
+                -backend-config=config/${targetEnv}-state-store.tfvars \
                 -backend-config='key=tf/${targetEnv}/${tfState}' \
                 -force-copy \
                 .
