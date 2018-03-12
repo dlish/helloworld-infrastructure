@@ -153,10 +153,10 @@ def notifyTeardownEvent(String ip) {
 def notifyGithub(String comment) {
     if (NOTIFICATIONS) {
         withCredentials([
-            string(credentialsId: '96df6ea0-11f0-4868-a203-7dbfac9bef3d', variable: 'TOKEN')
+            string(credentialsId: 'b4043775-af57-4862-8213-3759bba3e2f3', variable: 'TOKEN')
         ]) {
             def pr  = env.BRANCH_NAME.split("-")[1].trim()
-            sh "curl -H \"Content-Type: application/json\" -u ifg-bot:$TOKEN -X POST -d '{\"body\": \"$comment\"}' https://api.github.com/repos/dlish27/helloworld-infrastructure/issues/$pr/comments"
+            sh "curl -H \"Content-Type: application/json\" -u dlish:$TOKEN -X POST -d '{\"body\": \"$comment\"}' https://api.github.com/repos/dlish27/helloworld-infrastructure/issues/$pr/comments"
         }
     }
 }
