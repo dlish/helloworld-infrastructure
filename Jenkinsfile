@@ -9,12 +9,11 @@ TERRAFORM_DIR = 'deploy/docker-swarm/terraform/aws'
 NOTIFICATIONS = true
 
 node {
-    def tag = "git-${gitCommit()}"
-
     stage('checkout') {
         checkout scm
     }
 
+    def tag = "git-${gitCommit()}"
     stage('build AMIs') {
         if (rebuildAmi) {
             sh """$packer build \
