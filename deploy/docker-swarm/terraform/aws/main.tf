@@ -178,7 +178,7 @@ resource "null_resource" "deploy_docker_stack" {
 
   provisioner "file" {
     source      = "${var.nginx_conf}"
-    destination = "./resources/nginx/nginx.conf"
+    destination = "nginx.conf"
   }
 
   provisioner "remote-exec" {
