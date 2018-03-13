@@ -1,0 +1,75 @@
+version: '3.5'
+
+networks:
+  site:
+    driver: overlay
+    attachable: true
+  app:
+    driver: overlay
+    attachable: true
+
+services:
+  proxy:
+    image: nginx:1.13.9-alpine
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - helloworld
+      - helloworld-app
+    networks: 
+      - site
+      - app
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  helloworld:
+    image: dlish27/helloworld:0.0.1
+    networks: 
+      - site
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+
+  helloworld-app:
+    image: dlish27/helloworld-app:0.0.1
+    networks: 
+      - app
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+
+  helloworld-auth:
+    image: dlish27/helloworld-auth:0.0.1
+    networks: 
+      - app
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+
+  helloworld-auth-db:
+    image: dlish27/helloworld-auth-db:0.0.1
+    ports:
+      - 5432:5432
+    networks: 
+      - app
