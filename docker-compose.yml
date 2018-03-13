@@ -54,7 +54,7 @@ services:
         window: 120s
 
   helloworld-auth:
-    image: dlish27/helloworld-auth:0.0.0
+    image: dlish27/helloworld-auth:0.0.1
     networks: 
       - app
     deploy:
@@ -68,7 +68,7 @@ services:
         window: 120s
 
   helloworld-auth-db:
-    image: dlish27/helloworld-auth-db:0.0.0
+    image: dlish27/helloworld-auth-db:0.0.1
     ports:
       - 5432:5432
     networks: 
